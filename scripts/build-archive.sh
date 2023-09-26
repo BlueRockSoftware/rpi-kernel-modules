@@ -2,6 +2,11 @@
 CPU=12
 KERNEL_VERSION="5.10.92"
 
+mkdir compiled_overlays
+cd compiled_overlays
+wget -N https://raw.githubusercontent.com/BlueRockSoftware/rpi-kernel-modules/main/source/boot/overlays/interludeaudio-analog.dtbo
+wget -N https://raw.githubusercontent.com/BlueRockSoftware/rpi-kernel-modules/main/source/boot/overlays/interludeaudio-digital.dtbo
+cd ..
 echo "!!!  Build modules for kernel ${KERNEL_VERSION}  !!!"
 
 echo "!!!  Build RPi0 kernel and modules  !!!"
@@ -46,8 +51,10 @@ echo "-------------------------"
 
 echo "!!!  Creating archive  !!!"
 mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/boot/overlays
-cp arch/arm/boot/dts/overlays/interludeaudio-digital.dtbo modules-rpi-${KERNEL_VERSION}-interludeaudio/boot/overlays
-cp arch/arm/boot/dts/overlays/interludeaudio-analog.dtbo modules-rpi-${KERNEL_VERSION}-interludeaudio/boot/overlays
+cd ..
+cp compiled_overlays/interludeaudio-digital.dtbo linux-${KERNEL_VERSION}/modules-rpi-${KERNEL_VERSION}-interludeaudio/boot/overlays
+cp compiled_overlays/interludeaudio-analog.dtbo linux-${KERNEL_VERSION}/modules-rpi-${KERNEL_VERSION}-interludeaudio/boot/overlays
+cd linux-${KERNEL_VERSION}/
 tar -czvf modules-rpi-${KERNEL_VERSION}-interludeaudio.tar.gz modules-rpi-${KERNEL_VERSION}-interludeaudio/ --owner=0 --group=0
 md5sum modules-rpi-${KERNEL_VERSION}-interludeaudio.tar.gz > modules-rpi-${KERNEL_VERSION}-interludeaudio.md5sum.txt
 sha1sum modules-rpi-${KERNEL_VERSION}-interludeaudio.tar.gz > modules-rpi-${KERNEL_VERSION}-interludeaudio.sha1sum.txt
