@@ -1,14 +1,35 @@
 #!/bin/bash
 CPU=12
-KERNEL_VERSION="5.10.92"
+KERNEL_VERSION="6.1.21"
+KERNEL_COMMIT="1440b3e0b52075a9ec244216cddcf56099c28dfa"
+
+echo "!!!  Build modules for kernel ${KERNEL_VERSION}  !!!"
+echo "!!!  Download kernel hash info  !!!"
+wget -N https://raw.githubusercontent.com/raspberrypi/rpi-firmware/${KERNEL_COMMIT}/git_hash
+GIT_HASH="$(cat git_hash)"
+rm git_hash
+
+echo "!!!  Download kernel source  !!!"
+wget https://github.com/raspberrypi/linux/archive/${GIT_HASH}.tar.gz
+
+echo "!!!  Extract kernel source  !!!"
+rm -rf linux-${KERNEL_VERSION}+/
+tar xvzf ${GIT_HASH}.tar.gz
+rm ${GIT_HASH}.tar.gz
+mv linux-${GIT_HASH}/ linux-${KERNEL_VERSION}/
+
 
 mkdir compiled_overlays
 cd compiled_overlays
 wget -N https://raw.githubusercontent.com/BlueRockSoftware/rpi-kernel-modules/main/source/boot/overlays/interludeaudio-analog.dtbo
 wget -N https://raw.githubusercontent.com/BlueRockSoftware/rpi-kernel-modules/main/source/boot/overlays/interludeaudio-digital.dtbo
+echo "!! pulling source !!"
+wget -N https://raw.githubusercontent.com/BlueRockSoftware/rpilinux/rpi-5.15.y/sound/soc/bcm/rpi-wm8804-soundcard.c
+
 cd ..
 echo "!!!  Build modules for kernel ${KERNEL_VERSION}  !!!"
-
+sudo cp compiled_overlays/rpi-wm8804-soundcard.c linux-${KERNEL_VERSION}/sound/soc/bcm/rpi-wm8804-soundcard.c
+rpi-wm8804-soundcard.c
 echo "!!!  Build RPi0 kernel and modules  !!!"
 cd linux-${KERNEL_VERSION}/
 KERNEL=kernel
@@ -17,7 +38,9 @@ make -j${CPU} ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs
 mkdir -p mnt/ext4
 sudo env PATH=$PATH make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=mnt/ext4 modules_install
 mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/lib/modules/${KERNEL_VERSION}+/kernel/sound/soc/bcm/
-cp sound/soc/bcm/snd-soc-rpi-wm8804-soundcard.ko modules-rpi-${KERNEL_VERSION}-interludeaudio//lib/modules/${KERNEL_VERSION}+/kernel/sound/soc/bcm/
+cp sound/soc/bcm/snd-soc-rpi-wm8804-soundcard.ko modules-rpi-${KERNEL_VERSION}-interludeaudio/lib/modules/${KERNEL_VERSION}+/kernel/sound/soc/bcm/
+mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/kernel-image
+sudo cp arch/arm/boot/zImage modules-rpi-${KERNEL_VERSION}-interludeaudio/kernel-image/kernel.img
 sudo rm -rf mnt
 
 echo "!!!  RPi0 build done  !!!"
@@ -31,6 +54,7 @@ mkdir -p mnt/ext4
 sudo env PATH=$PATH make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=mnt/ext4 modules_install
 mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/lib/modules/${KERNEL_VERSION}-v7+/kernel/sound/soc/bcm/
 cp sound/soc/bcm/snd-soc-rpi-wm8804-soundcard.ko modules-rpi-${KERNEL_VERSION}-interludeaudio//lib/modules/${KERNEL_VERSION}-v7+/kernel/sound/soc/bcm/
+sudo cp arch/arm/boot/zImage modules-rpi-${KERNEL_VERSION}-interludeaudio/kernel-image/kernel7.img
 sudo rm -rf mnt
 
 echo "!!!  RPi3 build done  !!!"
@@ -44,10 +68,22 @@ mkdir -p mnt/ext4
 sudo env PATH=$PATH make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- INSTALL_MOD_PATH=mnt/ext4 modules_install
 mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/lib/modules/${KERNEL_VERSION}-v7l+/kernel/sound/soc/bcm/
 cp sound/soc/bcm/snd-soc-rpi-wm8804-soundcard.ko modules-rpi-${KERNEL_VERSION}-interludeaudio//lib/modules/${KERNEL_VERSION}-v7l+/kernel/sound/soc/bcm/
+sudo cp arch/arm/boot/zImage modules-rpi-${KERNEL_VERSION}-interludeaudio/kernel-image/kernel7l.img
 sudo rm -rf mnt
 
 echo "!!!  RPi4 build done  !!!"
 echo "-------------------------"
+
+echo "!!!  Build 64-bit kernel and modules  !!!"
+KERNEL=kernel8
+make -j${CPU}  ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
+make -j${CPU}  ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules dtbs
+mkdir -p mnt/ext4
+sudo env PATH=$PATH make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=mnt/ext4 modules_install
+mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/lib/modules/${KERNEL_VERSION}-v8+/kernel/sound/soc/bcm/
+cp sound/soc/bcm/snd-soc-rpi-wm8804-soundcard.ko modules-rpi-${KERNEL_VERSION}-interludeaudio//lib/modules/${KERNEL_VERSION}-v8+/kernel/sound/soc/bcm/
+sudo cp arch/arm64/boot/Image modules-rpi-${KERNEL_VERSION}-interludeaudio/kernel-image/kernel8.img
+sudo rm -rf mnt
 
 echo "!!!  Creating archive  !!!"
 mkdir -p modules-rpi-${KERNEL_VERSION}-interludeaudio/boot/overlays
